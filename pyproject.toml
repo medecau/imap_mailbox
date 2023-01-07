@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mail_bot"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Pedro Rodrigues <medecau@gmail.com>"]
 
@@ -13,6 +13,10 @@ pytest = "^7.1.2"
 pytest-regressions = "^2.3.1"
 hypothesis = "^6.47.3"
 isort = "^5.10.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.12.0"
+isort = "^5.11.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
