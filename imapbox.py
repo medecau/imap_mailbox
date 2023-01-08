@@ -20,7 +20,9 @@ def handle_response(response):
 class IMAPMessage(mailbox.Message):
     """A Mailbox Message class that uses an IMAPClient object to fetch the message"""
 
-    def __init__(self, message) -> None:
+    def __init__(self, message=None) -> None:
+        if message is None:
+            message = EmailMessage()
         super().__init__(message)
 
     @classmethod
@@ -65,6 +67,22 @@ class IMAPMailbox(mailbox.Mailbox):
                 raise Exception("Size mismatch")
 
             yield uid, body
+
+    def add(self, message) -> str:
+        """Add a message to the mailbox"""
+
+        self.__m.append(
+            self.folder,
+            "",
+            imaplib.Time2Internaldate(time.time()),
+            message.as_bytes(),
+        )
+
+    def discard(self, key: str) -> None:
+        """Remove a message from the mailbox"""
+
+        self.__m.store(key, "+FLAGS", "\\Deleted")
+        self.__m.expunge()
 
     def list_folders(self):
         """List all folders in the mailbox"""
