@@ -4,6 +4,7 @@ import os
 import re
 import time
 
+
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
 
 
@@ -12,28 +13,19 @@ def handle_response(response):
     if status != "OK":
         raise Exception(data[0])
 
-    # print(data)
-
     return data
 
 
 class IMAPMessage(mailbox.Message):
     """A Mailbox Message class that uses an IMAPClient object to fetch the message"""
 
-    def __init__(self, message=None) -> None:
-        if message is None:
-            message = EmailMessage()
-        super().__init__(message)
-
     @classmethod
     def from_uid(cls, uid, mailbox):
-        _uid, message = next(mailbox.fetch(uid, "RFC822"))
-        if _uid != uid:
-            e = Exception("UID mismatch")
-            e.add_note(f"Expected: {uid} Got: {_uid}")
-            raise e
+        """Create a new message from a UID"""
 
-        return cls(message)
+        # fetch the message from the mailbox
+        uid, body = next(mailbox.fetch(uid, "RFC822"))
+        return cls(body)
 
 
 class IMAPMailbox(mailbox.Mailbox):
@@ -47,6 +39,7 @@ class IMAPMailbox(mailbox.Mailbox):
         self.__m = imaplib.IMAP4_SSL(self.host)
         self.__m.login(self.user, self.password)
         self.__m.select(self.folder)
+
         return self
 
     def __exit__(self, *args):
