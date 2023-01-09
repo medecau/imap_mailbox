@@ -5,15 +5,28 @@ import re
 import time
 
 
+__all__ = ["IMAPMailbox", "IMAPMessage"]
+
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
+FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"([^\"]+)\"$")
 
 
 def handle_response(response):
+    """Handle the response from the IMAP server"""
     status, data = response
     if status != "OK":
         raise Exception(data[0])
 
     return data
+
+
+def parse_folder_data(data):
+    """Parse the folder data on a folder list call"""
+
+    # use regex to parse the folder data
+    flags, delimiter, folder_name = FOLDER_DATA_RE.match(data.decode()).groups()
+
+    return flags, delimiter, folder_name
 
 
 class IMAPMessage(mailbox.Message):
@@ -77,10 +90,20 @@ class IMAPMailbox(mailbox.Mailbox):
         self.__m.store(key, "+FLAGS", "\\Deleted")
         self.__m.expunge()
 
-    def list_folders(self):
-        """List all folders in the mailbox"""
+    def list_folders(self) -> tuple:
+        """List all folders in the mailbox
 
-        return self.__m.list()
+        Returns:
+            tuple: A tuple of flags, delimiter, folder name, and folder display name
+        """
+
+        folders_data = handle_response(self.__m.list())
+        for data in folders_data:
+            flags, delimiter, folder = parse_folder_data(data)
+            display_name = folder.split(delimiter)[-1]
+            yield (flags, delimiter, folder, display_name)
+
+        return
 
     def get_folder(self, folder):
         self.__m.select(folder)
