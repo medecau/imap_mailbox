@@ -161,6 +161,9 @@ class IMAPMailbox(mailbox.Mailbox):
     def __delitem__(self, key: str) -> None:
         raise NotImplementedError("Use discard() instead")
 
+    def __len__(self) -> int:
+        return len(self.keys())
+
     def fetch(self, messageset: bytes, what):
         """Fetch messages from the mailbox"""
 
