@@ -107,9 +107,10 @@ class IMAPMailbox(mailbox.Mailbox):
         self.disconnect()
 
     def __iter__(self):
+        """Iterate over all messages in the mailbox"""
         data = handle_response(self.__m.search(None, "ALL"))
         for uid in data[0].decode().split():
-            yield IMAPMessage.from_uid(uid, self)
+            yield IMAPMessageHeadersOnly.from_uid(uid, self)
 
     def fetch(self, uids, what):
         messages = handle_response(self.__m.fetch(uids, what))
