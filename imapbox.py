@@ -135,6 +135,24 @@ class IMAPMailbox(mailbox.Mailbox):
         self.__m.store(key, "+FLAGS", "\\Deleted")
         self.__m.expunge()
 
+    def search(self, query) -> list:
+        """Search for messages matching the query"""
+
+        data = handle_response(self.__m.search(None, query))
+
+        return data[0].decode().split()
+
+    def find(self, text) -> list:
+        """Find messages that contain the specified string in the message body or subject
+
+        Returns:
+            list: A list of message UIDs
+        """
+
+        data = handle_response(self.__m.search(None, "TEXT", text))
+
+        return data[0].decode().split()
+
     def list_folders(self) -> tuple:
         """List all folders in the mailbox
 
@@ -153,21 +171,3 @@ class IMAPMailbox(mailbox.Mailbox):
     def get_folder(self, folder):
         self.__m.select(folder)
         return self
-
-    def search(self, **kwargs) -> list:
-        """Search for messages matching the query"""
-
-        # remove underscores from keys
-        kwargs = {key.lstrip("_"): value for key, value in kwargs.items()}
-        # create a list of key value pairs
-        query = [f'{key.upper()} "{value}"' for key, value in kwargs.items()]
-        # join the list with spaces
-        full_query = " ".join(query)
-
-        return self.__search(full_query)
-
-    def __search(self, query) -> list:
-        """Search for messages matching the query"""
-        data = handle_response(self.__m.search(None, query))
-
-        return data[0].decode().split()
