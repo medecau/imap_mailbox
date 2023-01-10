@@ -6,7 +6,6 @@ authors = ["Pedro Rodrigues <medecau@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-IMAPClient = "^2.2.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
