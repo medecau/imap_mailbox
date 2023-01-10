@@ -94,7 +94,7 @@ class IMAPMailbox(mailbox.Mailbox):
         """Connect to the IMAP server"""
         self.__m = imaplib.IMAP4_SSL(self.host)
         self.__m.login(self.user, self.password)
-        self.__m.select(self.__folder)
+        self.select(self.__folder)
 
     def disconnect(self):
         """Disconnect from the IMAP server"""
@@ -270,6 +270,13 @@ class IMAPMailbox(mailbox.Mailbox):
 
         return
 
-    def get_folder(self, folder):
+    @property
+    def current_folder(self):
+        """Get the currently selected folder"""
+        return self.__folder
+
+    def select(self, folder):
+        """Select a folder"""
+        self.__folder = folder
         self.__m.select(folder)
         return self
