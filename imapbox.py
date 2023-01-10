@@ -142,7 +142,7 @@ class IMAPMailbox(mailbox.Mailbox):
 
     def fetch(self, uids, what):
         """Fetch messages from the mailbox"""
-        messages = handle_response(self.__m.fetch(uids, what))
+        messages = handle_response(self.__m.fetch(",".join(uids), what))[::2]
 
         for head, body in messages:
             uid, what, size = MESSAGE_HEAD_RE.match(head.decode()).groups()
