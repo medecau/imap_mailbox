@@ -129,20 +129,20 @@ class IMAPMailbox(mailbox.Mailbox):
             message.as_bytes(),
         )
 
-    def copy(self, key: str, folder: str) -> None:
+    def copy(self, messageset: bytes, folder: str) -> None:
         """Copy a message to a different folder"""
 
-        self.__m.copy(key, folder)
+        self.__m.copy(messageset, folder)
 
-    def discard(self, key: str) -> None:
-        """Remove a message from the mailbox"""
+    def discard(self, messageset: bytes) -> None:
+        """Mark messages for deletion"""
 
-        self.__m.store(key, "+FLAGS", "\\Deleted")
-        self.__m.expunge()
+        self.__m.store(messageset, "+FLAGS", "\\Deleted")
 
-    def fetch(self, uids, what):
+    def fetch(self, messageset: bytes, what):
         """Fetch messages from the mailbox"""
-        messages = handle_response(self.__m.fetch(",".join(uids), what))[::2]
+
+        messages = handle_response(self.__m.fetch(messageset, what))[::2]
 
         for head, body in messages:
             uid, what, size = MESSAGE_HEAD_RE.match(head.decode()).groups()
@@ -242,12 +242,16 @@ class IMAPMailbox(mailbox.Mailbox):
         LAST MONTH - messages from last month
         THIS YEAR - messages from this year
         LAST YEAR - messages from last year
+
+        Returns:
+            bytes: A comma-separated list of message UIDs
         """
 
         expanded_query = self.__expand_search_macros(query)
         print(expanded_query)
         data = handle_response(self.__m.search(None, expanded_query))
-        return data[0].decode().split()
+
+        return data[0].replace(b" ", b",")
 
     def list_folders(self) -> tuple:
         """List all folders in the mailbox
