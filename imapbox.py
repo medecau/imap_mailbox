@@ -112,13 +112,10 @@ class IMAPMailbox(mailbox.Mailbox):
         for uid in data[0].decode().split():
             yield IMAPMessageHeadersOnly.from_uid(uid, self)
 
-    def fetch(self, uids, what):
-        messages = handle_response(self.__m.fetch(uids, what))
-
-        for head, body in messages:
-            uid, what, size = MESSAGE_HEAD_RE.match(head.decode()).groups()
-            if size != str(len(body)):
-                raise Exception("Size mismatch")
+    @property
+    def capability(self):
+        """Get the server capabilities"""
+        return handle_response(self.__m.capability())[0].decode()
 
     def add(self, message, folder) -> str:
         """Add a message to the mailbox"""
@@ -130,11 +127,27 @@ class IMAPMailbox(mailbox.Mailbox):
             message.as_bytes(),
         )
 
+    def copy(self, key: str, folder: str) -> None:
+        """Copy a message to a different folder"""
+
+        self.__m.copy(key, folder)
+
     def discard(self, key: str) -> None:
         """Remove a message from the mailbox"""
 
         self.__m.store(key, "+FLAGS", "\\Deleted")
         self.__m.expunge()
+
+    def fetch(self, uids, what):
+        """Fetch messages from the mailbox"""
+        messages = handle_response(self.__m.fetch(uids, what))
+
+        for head, body in messages:
+            uid, what, size = MESSAGE_HEAD_RE.match(head.decode()).groups()
+            if size != str(len(body)):
+                raise Exception("Size mismatch")
+
+            yield uid, body
 
     def search(self, query) -> list:
         """Search for messages matching the query"""
@@ -151,6 +164,18 @@ class IMAPMailbox(mailbox.Mailbox):
         """
 
         data = handle_response(self.__m.search(None, "TEXT", text))
+
+        return data[0].decode().split()
+
+    @property
+    def new(self) -> list:
+        """Get a list of new messages
+
+        Returns:
+            list: A list of message UIDs
+        """
+
+        data = handle_response(self.__m.search(None, "UNSEEN"))
 
         return data[0].decode().split()
 
