@@ -119,6 +119,11 @@ class IMAPMailbox(mailbox.Mailbox):
         data = handle_response(self.__m.search(None, "ALL"))
         return data[0].decode().split()
 
+    def items(self):
+        """Iterate over all messages in the mailbox"""
+        uids = ",".join(self.keys()).encode()
+        return self.fetch(uids, "RFC822")
+
     @property
     def capability(self):
         """Get the server capabilities"""
