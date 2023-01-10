@@ -81,22 +81,30 @@ class IMAPMessageHeadersOnly(IMAPMessage):
 
 
 class IMAPMailbox(mailbox.Mailbox):
+    """A Mailbox class that uses an IMAPClient object as the backend"""
+
     def __init__(self, host, user, password, folder="INBOX"):
+        """Create a new IMAPMailbox object"""
         self.host = host
         self.user = user
         self.password = password
-        self.folder = folder
 
-    def __enter__(self):
+    def connect(self):
+        """Connect to the IMAP server"""
         self.__m = imaplib.IMAP4_SSL(self.host)
         self.__m.login(self.user, self.password)
-        self.__m.select(self.folder)
 
+    def disconnect(self):
+        """Disconnect from the IMAP server"""
+        self.__m.close()
+        self.__m.logout()
+
+    def __enter__(self):
+        self.connect()
         return self
 
     def __exit__(self, *args):
-        self.__m.close()
-        self.__m.logout()
+        self.disconnect()
 
     def __iter__(self):
         data = handle_response(self.__m.search(None, "ALL"))
@@ -111,13 +119,11 @@ class IMAPMailbox(mailbox.Mailbox):
             if size != str(len(body)):
                 raise Exception("Size mismatch")
 
-            yield uid, body
-
-    def add(self, message) -> str:
+    def add(self, message, folder) -> str:
         """Add a message to the mailbox"""
 
         self.__m.append(
-            self.folder,
+            folder,
             "",
             imaplib.Time2Internaldate(time.time()),
             message.as_bytes(),
