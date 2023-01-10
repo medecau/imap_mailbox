@@ -3,7 +3,7 @@ import mailbox
 import os
 import re
 import time
-
+import email.header
 
 __all__ = ["IMAPMailbox", "IMAPMessage"]
 
@@ -40,6 +40,32 @@ class IMAPMessage(mailbox.Message):
         uid, body = next(mailbox.fetch(uid, "RFC822"))
         return cls(body)
 
+    def __getitem__(self, name: str):
+        """Get a message header
+
+        This method overrides the default implementation of accessing a message headers.
+        The header is decoded using the email.header.decode_header method. This allows
+        for the retrieval of headers that contain non-ASCII characters.
+        """
+
+        original_header = super().__getitem__(name)
+
+        if original_header is None:
+            return None
+
+        decoded_pairs = email.header.decode_header(original_header)
+        decoded_chunks = []
+        for data, charset in decoded_pairs:
+            if isinstance(data, str):
+                decoded_chunks.append(data)
+            elif charset is None:
+                decoded_chunks.append(data.decode())
+            else:
+                decoded_chunks.append(data.decode(charset))
+
+        # decode_chunks = (pair[0] for pair in decoded_pairs)
+
+        return " ".join(decoded_chunks)
 
 class IMAPMailbox(mailbox.Mailbox):
     def __init__(self, host, user, password, folder="INBOX"):
