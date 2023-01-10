@@ -184,40 +184,34 @@ class IMAPMailbox(mailbox.Mailbox):
 
         last_year_start = datetime.date(today.year - 1, 1, 1)
 
-        _ = query
-        _ = _.replace("FIND", "TEXT")
-        _ = _.replace("TODAY", "ON {:%d-%b-%Y}".format(today))
-        _ = _.replace(
-            "YESTERDAY",
-            "(ON {:%d-%b-%Y})".format(yesterday),
+        q = query
+        q = q.replace("FIND", "TEXT")
+        q = q.replace("TODAY", "ON {:%d-%b-%Y}".format(today))
+        q = q.replace("YESTERDAY", "ON {:%d-%b-%Y}".format(yesterday))
+
+        q = q.replace("THIS WEEK", "SINCE {:%d-%b-%Y}".format(week_start))
+        q = q.replace(
+            "LAST WEEK",
+            "SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y}".format(last_week_start, week_start),
         )
 
-        _ = _.replace("THIS WEEK", "SINCE {:%d-%b-%Y}".format(week_start))
-        _ = _.replace(
-            "(LAST WEEK)",
-            "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
-                last_week_start, week_start
-            ),
-        )
+        q = q.replace("THIS MONTH", "SINCE {:%d-%b-%Y}".format(month_start))
+        q = q.replace("THIS YEAR", "SINCE {:%d-%b-%Y}".format(year_start))
 
-        _ = _.replace("(THIS MONTH)", "SINCE {:%d-%b-%Y}".format(month_start))
-        _ = _.replace("(THIS YEAR)", "SINCE {:%d-%b-%Y}".format(year_start))
-
-        _ = _.replace(
-            "(LAST MONTH)",
-            "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
+        q = q.replace(
+            "LAST MONTH",
+            "SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y}".format(
                 last_month_start, month_start
             ),
         )
-
-        _ = _.replace(
-            "(LAST YEAR)",
+        q = q.replace(
+            "LAST YEAR",
             "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
                 last_year_start, year_start
             ),
         )
 
-        return _
+        return q
 
     def search(self, query) -> list:
         """Search for messages matching the query
