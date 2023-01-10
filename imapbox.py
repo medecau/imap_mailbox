@@ -139,6 +139,15 @@ class IMAPMailbox(mailbox.Mailbox):
 
         self.__m.store(messageset, "+FLAGS", "\\Deleted")
 
+    def remove(self, messageset: bytes) -> None:
+        """Remove messages from the mailbox"""
+
+        self.discard(messageset)
+        self.__m.expunge()
+
+    def __delitem__(self, key: str) -> None:
+        raise NotImplementedError("Use discard() instead")
+
     def fetch(self, messageset: bytes, what):
         """Fetch messages from the mailbox"""
 
