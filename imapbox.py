@@ -114,6 +114,9 @@ class IMAPMailbox(mailbox.Mailbox):
         for uid in data[0].decode().split():
             yield IMAPMessageHeadersOnly.from_uid(uid, self)
 
+    def values(self):
+        yield from self.__iter__()
+
     def keys(self) -> list[str]:
         """Get a list of all message UIDs in the mailbox"""
         data = handle_response(self.__m.search(None, "ALL"))
