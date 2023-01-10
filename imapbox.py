@@ -1,9 +1,9 @@
+import datetime
+import email.header
 import imaplib
 import mailbox
-import os
 import re
 import time
-import email.header
 
 __all__ = ["IMAPMailbox", "IMAPMessage"]
 
@@ -149,34 +149,107 @@ class IMAPMailbox(mailbox.Mailbox):
 
             yield uid, body
 
+    def __expand_search_macros(self, query) -> str:
+        """Expand search macros in the query
+
+        The following macros are supported:
+
+        FIND <text> - alias for TEXT, searches the message headers and body
+        TODAY - messages from today
+        YESTERDAY - messages from yesterday
+        THIS WEEK - messages from this week, Monday to Sunday
+        LAST WEEK - messages from last week
+        THIS MONTH - messages from this month
+        LAST MONTH - messages from last month
+        THIS YEAR - messages from this year
+        LAST YEAR - messages from last year
+        """
+
+        today = datetime.date.today()
+        yesterday = today - datetime.timedelta(days=1)
+
+        week_start = today - datetime.timedelta(days=today.weekday())
+        last_week_start = week_start - datetime.timedelta(days=7)
+
+        month_start = datetime.date(today.year, today.month, 1)
+        year_start = datetime.date(today.year, 1, 1)
+
+        if today.month == 1:  # January
+            # last month is December of the previous year
+            last_month_start = datetime.date(today.year - 1, 12, 1)
+        else:
+            last_month_start = datetime.date(today.year, today.month - 1, 1)
+
+        last_year_start = datetime.date(today.year - 1, 1, 1)
+
+        _ = query
+        _ = _.replace("FIND", "TEXT")
+        _ = _.replace("TODAY", "ON {:%d-%b-%Y}".format(today))
+        _ = _.replace(
+            "YESTERDAY",
+            "(ON {:%d-%b-%Y})".format(yesterday),
+        )
+
+        _ = _.replace("THIS WEEK", "SINCE {:%d-%b-%Y}".format(week_start))
+        _ = _.replace(
+            "(LAST WEEK)",
+            "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
+                last_week_start, week_start
+            ),
+        )
+
+        _ = _.replace("(THIS MONTH)", "SINCE {:%d-%b-%Y}".format(month_start))
+        _ = _.replace("(THIS YEAR)", "SINCE {:%d-%b-%Y}".format(year_start))
+
+        _ = _.replace(
+            "(LAST MONTH)",
+            "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
+                last_month_start, month_start
+            ),
+        )
+
+        _ = _.replace(
+            "(LAST YEAR)",
+            "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
+                last_year_start, year_start
+            ),
+        )
+
+        return _
+
     def search(self, query) -> list:
-        """Search for messages matching the query"""
+        """Search for messages matching the query
 
-        data = handle_response(self.__m.search(None, query))
+        We support extra search macros in the search query in addition to
+        the standard IMAP search macros.
 
-        return data[0].decode().split()
+        One search macro is FIND <text>, which is an alias for TEXT.
+        The rest of the macros deal with date ranges.
 
-    def find(self, text) -> list:
-        """Find messages that contain the specified string in the message body or subject
+        The date range macros are expanded to the appropriate date range and
+        are relative to the current date.
+        Example: TODAY expands to ON <date>, where <date> is today's date.
 
-        Returns:
-            list: A list of message UIDs
+        Note that some of these macros are multi-word, and will expand
+        to multiple search terms. Expansions that result in multiple search
+        terms are wrapped in parentheses.
+        Example: THIS WEEK expands to (SINCE <starting date> BEFORE <ending date>)
+
+        The following extra macros are supported:
+
+        FIND <text> - alias for TEXT, searches the message headers and body
+        TODAY - messages from today
+        YESTERDAY - messages from yesterday
+        THIS WEEK - messages from this week, Monday to Sunday
+        LAST WEEK - messages from last week
+        THIS MONTH - messages from this month
+        LAST MONTH - messages from last month
+        THIS YEAR - messages from this year
+        LAST YEAR - messages from last year
         """
 
-        data = handle_response(self.__m.search(None, "TEXT", text))
-
-        return data[0].decode().split()
-
-    @property
-    def new(self) -> list:
-        """Get a list of new messages
-
-        Returns:
-            list: A list of message UIDs
-        """
-
-        data = handle_response(self.__m.search(None, "UNSEEN"))
-
+        expanded_query = self.__expand_search_macros(query)
+        data = handle_response(self.__m.search(None, expanded_query))
         return data[0].decode().split()
 
     def list_folders(self) -> tuple:
