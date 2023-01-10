@@ -67,6 +67,19 @@ class IMAPMessage(mailbox.Message):
 
         return " ".join(decoded_chunks)
 
+
+class IMAPMessageHeadersOnly(IMAPMessage):
+    """A Mailbox Message class that uses an IMAPClient object to fetch the message"""
+
+    @classmethod
+    def from_uid(cls, uid, mailbox):
+        """Create a new message from a UID"""
+
+        # fetch headers only message from the mailbox
+        uid, body = next(mailbox.fetch(uid, "RFC822.HEADER"))
+        return cls(body)
+
+
 class IMAPMailbox(mailbox.Mailbox):
     def __init__(self, host, user, password, folder="INBOX"):
         self.host = host
