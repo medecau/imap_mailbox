@@ -88,11 +88,13 @@ class IMAPMailbox(mailbox.Mailbox):
         self.host = host
         self.user = user
         self.password = password
+        self.__folder = folder
 
     def connect(self):
         """Connect to the IMAP server"""
         self.__m = imaplib.IMAP4_SSL(self.host)
         self.__m.login(self.user, self.password)
+        self.__m.select(self.__folder)
 
     def disconnect(self):
         """Disconnect from the IMAP server"""
@@ -249,6 +251,7 @@ class IMAPMailbox(mailbox.Mailbox):
         """
 
         expanded_query = self.__expand_search_macros(query)
+        print(expanded_query)
         data = handle_response(self.__m.search(None, expanded_query))
         return data[0].decode().split()
 
