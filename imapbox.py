@@ -60,8 +60,10 @@ class IMAPMessage(mailbox.Message):
                 decoded_chunks.append(data)
             elif charset is None:
                 decoded_chunks.append(data.decode())
+            elif charset == "unknown-8bit":
+                decoded_chunks.append(data.decode("utf-8", "replace"))
             else:
-                decoded_chunks.append(data.decode(charset))
+                decoded_chunks.append(data.decode(charset, "replace"))
 
         # decode_chunks = (pair[0] for pair in decoded_pairs)
 
