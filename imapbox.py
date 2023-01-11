@@ -29,6 +29,10 @@ def parse_folder_data(data):
     return flags, delimiter, folder_name
 
 
+def imap_time_range(start, end):
+    return "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(start, end)
+
+
 class IMAPMessage(mailbox.Message):
     """A Mailbox Message class that uses an IMAPClient object to fetch the message"""
 
@@ -179,20 +183,7 @@ class IMAPMailbox(mailbox.Mailbox):
             yield uid, body
 
     def __expand_search_macros(self, query) -> str:
-        """Expand search macros in the query
-
-        The following macros are supported:
-
-        FIND <text> - alias for TEXT, searches the message headers and body
-        TODAY - messages from today
-        YESTERDAY - messages from yesterday
-        THIS WEEK - messages from this week, Monday to Sunday
-        LAST WEEK - messages from last week
-        THIS MONTH - messages from this month
-        LAST MONTH - messages from last month
-        THIS YEAR - messages from this year
-        LAST YEAR - messages from last year
-        """
+        """Expand search macros in the query."""
 
         today = datetime.date.today()
         yesterday = today - datetime.timedelta(days=1)
@@ -213,30 +204,56 @@ class IMAPMailbox(mailbox.Mailbox):
 
         q = query
         q = q.replace("FIND", "TEXT")
+
         q = q.replace("TODAY", "ON {:%d-%b-%Y}".format(today))
         q = q.replace("YESTERDAY", "ON {:%d-%b-%Y}".format(yesterday))
 
-        q = q.replace("THIS WEEK", "SINCE {:%d-%b-%Y}".format(week_start))
-        q = q.replace(
-            "LAST WEEK",
-            "SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y}".format(last_week_start, week_start),
-        )
+        q = q.replace("THISWEEK", "SINCE {:%d-%b-%Y}".format(week_start))
+        q = q.replace("THISMONTH", "SINCE {:%d-%b-%Y}".format(month_start))
+        q = q.replace("THISYEAR", "SINCE {:%d-%b-%Y}".format(year_start))
 
-        q = q.replace("THIS MONTH", "SINCE {:%d-%b-%Y}".format(month_start))
-        q = q.replace("THIS YEAR", "SINCE {:%d-%b-%Y}".format(year_start))
+        q = q.replace("LASTWEEK", imap_time_range(last_week_start, week_start))
+        q = q.replace("LASTMONTH", imap_time_range(last_month_start, month_start))
+        q = q.replace("LASTYEAR", imap_time_range(last_year_start, year_start))
 
-        q = q.replace(
-            "LAST MONTH",
-            "SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y}".format(
-                last_month_start, month_start
-            ),
-        )
-        q = q.replace(
-            "LAST YEAR",
-            "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(
-                last_year_start, year_start
-            ),
-        )
+        # 3 days
+        three_days_ago = today - datetime.timedelta(days=3)
+        q = q.replace("PAST3DAYS", "SINCE {:%d-%b-%Y}".format(three_days_ago))
+
+        # 7 days
+        seven_days_ago = today - datetime.timedelta(days=7)
+        q = q.replace("PAST7DAYS", "SINCE {:%d-%b-%Y}".format(seven_days_ago))
+
+        # 14 days
+        fourteen_days_ago = today - datetime.timedelta(days=14)
+        q = q.replace("PAST14DAYS", "SINCE {:%d-%b-%Y}".format(fourteen_days_ago))
+
+        # 30 days
+        thirty_days_ago = today - datetime.timedelta(days=30)
+        q = q.replace("PAST30DAYS", "SINCE {:%d-%b-%Y}".format(thirty_days_ago))
+
+        # 60 days
+        sixty_days_ago = today - datetime.timedelta(days=60)
+        q = q.replace("PAST60DAYS", "SINCE {:%d-%b-%Y}".format(sixty_days_ago))
+
+        # 90 days
+        ninety_days_ago = today - datetime.timedelta(days=90)
+        q = q.replace("PAST90DAYS", "SINCE {:%d-%b-%Y}".format(ninety_days_ago))
+
+        # 180 days
+        half_year_ago = today - datetime.timedelta(days=180)
+        q = q.replace("PASTHALFYEAR", "PAST180DAYS")
+        q = q.replace("PAST180DAYS", "SINCE {:%d-%b-%Y}".format(half_year_ago))
+
+        # 365 days
+        a_year_ago = today - datetime.timedelta(days=365)
+        q = q.replace("PASTYEAR", "PAST365DAYS")
+        q = q.replace("PAST365DAYS", "SINCE {:%d-%b-%Y}".format(a_year_ago))
+
+        # 730 days - 2 years
+        two_years_ago = today - datetime.timedelta(days=730)
+        q = q.replace("PAST2YEARS", "PAST730DAYS")
+        q = q.replace("PAST730DAYS", "SINCE {:%d-%b-%Y}".format(two_years_ago))
 
         return q
 
@@ -253,29 +270,45 @@ class IMAPMailbox(mailbox.Mailbox):
         are relative to the current date.
         Example: TODAY expands to ON <date>, where <date> is today's date.
 
-        Note that some of these macros are multi-word, and will expand
-        to multiple search terms. Expansions that result in multiple search
-        terms are wrapped in parentheses.
-        Example: THIS WEEK expands to (SINCE <starting date> BEFORE <ending date>)
+        Note that some of these macros will expand to multiple search terms.
+        Expansions that result in multiple search terms are wrapped in parentheses.
+        Example: LASTWEEK expands to (SINCE <date1> BEFORE <date2>).
 
         The following extra macros are supported:
 
         FIND <text> - alias for TEXT, searches the message headers and body
+
         TODAY - messages from today
         YESTERDAY - messages from yesterday
-        THIS WEEK - messages from this week, Monday to Sunday
-        LAST WEEK - messages from last week
-        THIS MONTH - messages from this month
-        LAST MONTH - messages from last month
-        THIS YEAR - messages from this year
-        LAST YEAR - messages from last year
+        THISWEEK - messages since the start of the week, Monday to Sunday
+        LASTWEEK - messages from the week before
+        THISMONTH - messages since the start of the month
+        LASTMONTH - messages from the month before
+        THISYEAR - messages since the start of the year
+        LASTYEAR - messages from the year before
+
+        PAST7DAYS - messages from the past 7 days
+        PAST14DAYS - messages from the past 14 days
+        PAST30DAYS - messages from the past 30 days
+        PAST60DAYS - messages from the past 60 days
+        PAST90DAYS - messages from the past 90 days
+        PAST180DAYS - messages from the past 180 days
+        PAST365DAYS - messages from the past 365 days
+        PASTYEAR - same as PAST365DAYS
+        PAST730DAYS - messages from the past 730 days, or 2 years
+        PAST2YEARS - same as PAST730DAYS
+
+        These macros can be combined with other search macros, and can be
+        negated with NOT. For example, to get messages that are older than
+        7 days, use NOT PAST7DAYS.
 
         Returns:
             bytes: A comma-separated list of message UIDs
         """
 
         expanded_query = self.__expand_search_macros(query)
-        print(expanded_query)
+        if expanded_query != query:
+            print(f"Query expanded to: {expanded_query}")
         data = handle_response(self.__m.search(None, expanded_query))
 
         return data[0].replace(b" ", b",")
