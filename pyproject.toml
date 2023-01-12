@@ -1,22 +1,17 @@
 [tool.poetry]
-name = "mail_bot"
-version = "0.2.0"
-description = ""
+name = "imapbox"
+version = "0.1.0"
+description = "mailbox over IMAP"
 authors = ["Pedro Rodrigues <medecau@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-
-[tool.poetry.dev-dependencies]
-black = "^22.3.0"
-pytest = "^7.1.2"
-pytest-regressions = "^2.3.1"
-hypothesis = "^6.47.3"
-isort = "^5.10.1"
+python = "^3.8"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"
 isort = "^5.11.4"
+pytest = "^7.2.0"
+pdoc = "^12.3.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
