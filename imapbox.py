@@ -5,7 +5,7 @@ import mailbox
 import re
 import time
 
-__all__ = ["IMAPMailbox", "IMAPMessage"]
+__all__ = ["IMAPMailbox", "IMAPMessage", "IMAPMessageHeadersOnly"]
 
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
 FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"([^\"]+)\"$")
@@ -29,8 +29,21 @@ def parse_folder_data(data):
     return flags, delimiter, folder_name
 
 
-def imap_time_range(start, end):
-    return "(SINCE {:%d-%b-%Y} BEFORE {:%d-%b-%Y})".format(start, end)
+def change_time(time, days=0, hours=0, minutes=0, seconds=0):
+    """Change the time by a given amount of days, hours, minutes and seconds"""
+    return time + datetime.timedelta(
+        days=days, hours=hours, minutes=minutes, seconds=seconds
+    )
+
+
+def imap_date(time):
+    """Convert a datetime object to an IMAP date string"""
+    return time.strftime("%d-%b-%Y")
+
+
+def imap_date_range(start, end):
+    """Create an IMAP date range string for use in a search query"""
+    return f"(SINCE {imap_date(start)} BEFORE {imap_date(end)})"
 
 
 class IMAPMessage(mailbox.Message):
@@ -121,7 +134,7 @@ class IMAPMailbox(mailbox.Mailbox):
             yield IMAPMessageHeadersOnly.from_uid(uid, self)
 
     def values(self):
-        yield from self.__iter__()
+        yield from iter(self)
 
     def keys(self) -> list[str]:
         """Get a list of all message UIDs in the mailbox"""
@@ -138,11 +151,11 @@ class IMAPMailbox(mailbox.Mailbox):
         """Get the server capabilities"""
         return handle_response(self.__m.capability())[0].decode()
 
-    def add(self, message, folder) -> str:
+    def add(self, message):
         """Add a message to the mailbox"""
 
         self.__m.append(
-            folder,
+            self.current_folder,
             "",
             imaplib.Time2Internaldate(time.time()),
             message.as_bytes(),
@@ -205,59 +218,46 @@ class IMAPMailbox(mailbox.Mailbox):
         q = query
         q = q.replace("FIND", "TEXT")
 
-        q = q.replace("TODAY", "ON {:%d-%b-%Y}".format(today))
-        q = q.replace("YESTERDAY", "ON {:%d-%b-%Y}".format(yesterday))
+        q = q.replace("TODAY", f"ON {imap_date(today)}")
+        q = q.replace("YESTERDAY", f"ON {imap_date(yesterday)}")
 
-        q = q.replace("THISWEEK", "SINCE {:%d-%b-%Y}".format(week_start))
-        q = q.replace("THISMONTH", "SINCE {:%d-%b-%Y}".format(month_start))
-        q = q.replace("THISYEAR", "SINCE {:%d-%b-%Y}".format(year_start))
+        q = q.replace("THISWEEK", f"SINCE {imap_date(week_start)}")
+        q = q.replace("THISMONTH", f"SINCE {imap_date(month_start)}")
+        q = q.replace("THISYEAR", f"SINCE {imap_date(year_start)}")
 
-        q = q.replace("LASTWEEK", imap_time_range(last_week_start, week_start))
-        q = q.replace("LASTMONTH", imap_time_range(last_month_start, month_start))
-        q = q.replace("LASTYEAR", imap_time_range(last_year_start, year_start))
+        q = q.replace("LASTWEEK", imap_date_range(last_week_start, week_start))
+        q = q.replace("LASTMONTH", imap_date_range(last_month_start, month_start))
+        q = q.replace("LASTYEAR", imap_date_range(last_year_start, year_start))
 
-        # 3 days
-        three_days_ago = today - datetime.timedelta(days=3)
-        q = q.replace("PAST3DAYS", "SINCE {:%d-%b-%Y}".format(three_days_ago))
+        q = q.replace("PAST3DAYS", f"SINCE {imap_date(change_time(today, days=-3))}")
+        q = q.replace("PAST7DAYS", f"SINCE {imap_date(change_time(today, days=-7))}")
+        q = q.replace("PAST14DAYS", f"SINCE {imap_date(change_time(today, days=-14))}")
 
-        # 7 days
-        seven_days_ago = today - datetime.timedelta(days=7)
-        q = q.replace("PAST7DAYS", "SINCE {:%d-%b-%Y}".format(seven_days_ago))
-
-        # 14 days
-        fourteen_days_ago = today - datetime.timedelta(days=14)
-        q = q.replace("PAST14DAYS", "SINCE {:%d-%b-%Y}".format(fourteen_days_ago))
-
-        # 30 days
-        thirty_days_ago = today - datetime.timedelta(days=30)
-        q = q.replace("PAST30DAYS", "SINCE {:%d-%b-%Y}".format(thirty_days_ago))
-
-        # 60 days
-        sixty_days_ago = today - datetime.timedelta(days=60)
-        q = q.replace("PAST60DAYS", "SINCE {:%d-%b-%Y}".format(sixty_days_ago))
-
-        # 90 days
-        ninety_days_ago = today - datetime.timedelta(days=90)
-        q = q.replace("PAST90DAYS", "SINCE {:%d-%b-%Y}".format(ninety_days_ago))
+        q = q.replace("PAST30DAYS", f"SINCE {imap_date(change_time(today, days=-30))}")
+        q = q.replace("PAST60DAYS", f"SINCE {imap_date(change_time(today, days=-60))}")
+        q = q.replace("PAST90DAYS", f"SINCE {imap_date(change_time(today, days=-90))}")
 
         # 180 days
-        half_year_ago = today - datetime.timedelta(days=180)
         q = q.replace("PASTHALFYEAR", "PAST180DAYS")
-        q = q.replace("PAST180DAYS", "SINCE {:%d-%b-%Y}".format(half_year_ago))
+        q = q.replace(
+            "PAST180DAYS", f"SINCE {imap_date(change_time(today, days=-180))}"
+        )
 
         # 365 days
-        a_year_ago = today - datetime.timedelta(days=365)
         q = q.replace("PASTYEAR", "PAST365DAYS")
-        q = q.replace("PAST365DAYS", "SINCE {:%d-%b-%Y}".format(a_year_ago))
+        q = q.replace(
+            "PAST365DAYS", f"SINCE {imap_date(change_time(today, days=-365))}"
+        )
 
         # 730 days - 2 years
-        two_years_ago = today - datetime.timedelta(days=730)
         q = q.replace("PAST2YEARS", "PAST730DAYS")
-        q = q.replace("PAST730DAYS", "SINCE {:%d-%b-%Y}".format(two_years_ago))
+        q = q.replace(
+            "PAST730DAYS", f"SINCE {imap_date(change_time(today, days=-730))}"
+        )
 
         return q
 
-    def search(self, query) -> list:
+    def search(self, query):
         """Search for messages matching the query
 
         We support extra search macros in the search query in addition to
@@ -307,8 +307,6 @@ class IMAPMailbox(mailbox.Mailbox):
         """
 
         expanded_query = self.__expand_search_macros(query)
-        if expanded_query != query:
-            print(f"Query expanded to: {expanded_query}")
         data = handle_response(self.__m.search(None, expanded_query))
 
         return data[0].replace(b" ", b",")
@@ -325,8 +323,6 @@ class IMAPMailbox(mailbox.Mailbox):
             flags, delimiter, folder = parse_folder_data(data)
             display_name = folder.split(delimiter)[-1]
             yield (flags, delimiter, folder, display_name)
-
-        return
 
     @property
     def current_folder(self):
