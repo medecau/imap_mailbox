@@ -279,27 +279,32 @@ class IMAPMailbox(mailbox.Mailbox):
 
         The following extra macros are supported:
 
-        FIND <text> - alias for TEXT, searches the message headers and body
 
-        TODAY - messages from today
-        YESTERDAY - messages from yesterday
-        THISWEEK - messages since the start of the week, Monday to Sunday
-        LASTWEEK - messages from the week before
-        THISMONTH - messages since the start of the month
-        LASTMONTH - messages from the month before
-        THISYEAR - messages since the start of the year
-        LASTYEAR - messages from the year before
+        - FIND <text> - alias for TEXT, searches the message headers and body
 
-        PAST7DAYS - messages from the past 7 days
-        PAST14DAYS - messages from the past 14 days
-        PAST30DAYS - messages from the past 30 days
-        PAST60DAYS - messages from the past 60 days
-        PAST90DAYS - messages from the past 90 days
-        PAST180DAYS - messages from the past 180 days
-        PAST365DAYS - messages from the past 365 days
-        PASTYEAR - same as PAST365DAYS
-        PAST730DAYS - messages from the past 730 days, or 2 years
-        PAST2YEARS - same as PAST730DAYS
+        Current period:
+        - TODAY - messages from today
+        - THISWEEK - messages since the start of the week, Monday to Sunday
+        - THISMONTH - messages since the start of the month
+        - THISYEAR - messages since the start of the year
+
+        Previous period:
+        - YESTERDAY - messages from yesterday
+        - LASTWEEK - messages from the week before
+        - LASTMONTH - messages from the month before
+        - LASTYEAR - messages from the year before
+
+        Counting back from today:
+        - PAST7DAYS - messages from the past 7 days
+        - PAST14DAYS - messages from the past 14 days
+        - PAST30DAYS - messages from the past 30 days
+        - PAST60DAYS - messages from the past 60 days
+        - PAST90DAYS - messages from the past 90 days
+        - PAST180DAYS - messages from the past 180 days
+        - PAST365DAYS - messages from the past 365 days
+        - PASTYEAR - same as PAST365DAYS
+        - PAST730DAYS - messages from the past 730 days, or 2 years
+        - PAST2YEARS - same as PAST730DAYS
 
         These macros can be combined with other search macros, and can be
         negated with NOT. For example, to get messages that are older than
