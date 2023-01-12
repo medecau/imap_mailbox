@@ -1,10 +1,10 @@
-*Please note that `imapbox` is still under active development and will be subject to significant changes.*
+*Please note that `imap_mailbox` is still under active development and will be subject to significant changes.*
 
 ```python
-import imapbox
+import imap_mailbox
 
 # connect to the IMAP server
-with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
+with imap_mailbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
     
     # search messages from vip@example.com
     uids = mailbox.search('FROM', 'vip@example.com')
@@ -20,7 +20,7 @@ This module provides a subclass of `mailbox.Mailbox` that allows you to interact
 Install the latest version from GitHub:
 
 ```bash
-pip install https://github.com/medecau/imapbox/archive/refs/heads/main.zip
+pip install https://github.com/medecau/imap_mailbox/archive/refs/heads/main.zip
 ```
 
 # Examples
@@ -28,10 +28,10 @@ pip install https://github.com/medecau/imapbox/archive/refs/heads/main.zip
 ## Iterate over messages in a folder
 
 ```python
-import imapbox
+import imap_mailbox
 
 # connect to the IMAP server
-with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
+with imap_mailbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
     
     # select the INBOX folder
     mailbox.select('INBOX')
@@ -45,9 +45,9 @@ with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
 ## Delete messages from a noisy sender
 
 ```python
-import imapbox
+import imap_mailbox
 
-with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
+with imap_mailbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
     
     # search messages from
     uids = mailbox.search('FROM', 'spammer@example.com')
@@ -59,9 +59,9 @@ with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
 ## Delete GitHub messages older than two years
 
 ```python
-import imapbox
+import imap_mailbox
 
-with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
+with imap_mailbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
     
     # search messages older than two years from github.com
     uids = mailbox.search('NOT PAST2YEARS FROM github.com')
@@ -72,6 +72,6 @@ with imapbox.IMAPMailbox('imap.example.com', 'username', 'password') as mailbox:
 
 # Contribution
 
-Help improve imapbox by reporting any issues or suggestions on our issue tracker at [github.com/medecau/imapbox/issues](https://github.com/medecau/imapbox/issues).
+Help improve imap_mailbox by reporting any issues or suggestions on our issue tracker at [github.com/medecau/imap_mailbox/issues](https://github.com/medecau/imap_mailbox/issues).
 
-Get involved with the development, check out the source code at [github.com/medecau/imapbox](https://github.com/medecau/imapbox).
+Get involved with the development, check out the source code at [github.com/medecau/imap_mailbox](https://github.com/medecau/imap_mailbox).

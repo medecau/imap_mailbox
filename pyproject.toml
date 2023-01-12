@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "imapbox"
+name = "imap_mailbox"
 version = "0.1.0"
 description = "mailbox over IMAP"
 authors = ["Pedro Rodrigues <medecau@gmail.com>"]
