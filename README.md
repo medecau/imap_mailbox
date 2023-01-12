@@ -17,10 +17,10 @@ This module provides a subclass of `mailbox.Mailbox` that allows you to interact
 
 # Installation
 
-Install the latest version from PyPI:
+Install the latest version from GitHub:
 
 ```bash
-pip install imapbox
+pip install https://github.com/medecau/imapbox/archive/refs/heads/main.zip
 ```
 
 # Examples
