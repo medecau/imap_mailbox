@@ -17,6 +17,12 @@ This module provides a subclass of `mailbox.Mailbox` that allows you to interact
 
 # Installation
 
+Install the latest stable version from PyPI:
+
+```bash
+pip install imap-mailbox
+```
+
 Install the latest version from GitHub:
 
 ```bash
@@ -41,6 +47,26 @@ with imap_mailbox.IMAPMailbox('imap.example.com', 'username', 'password') as mai
         print(f"From: {message['From']}")
         print(f"Subject: {message['Subject']}")
 ```
+
+## Connect to a Proton Mail account
+
+```python
+import imap_mailbox
+
+# connect to the local IMAP bridge
+with imap_mailbox.IMAPMailbox(
+    '127.0.0.1', 'username', 'password'
+    port=1143, security='STARTTLS'
+    ) as mailbox:
+    
+    # search messages from your friend
+    uids = mailbox.search('FROM', 'handler@proton.me')
+
+    # erase the evidence
+    mailbox.delete(uids)
+    
+```
+_this is a joke; don't use proton for crimes – stay safe_
 
 ## Delete messages from a noisy sender
 
