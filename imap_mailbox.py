@@ -102,21 +102,33 @@ class IMAPMessageHeadersOnly(IMAPMessage):
 class IMAPMailbox(mailbox.Mailbox):
     """A Mailbox class that uses an IMAPClient object as the backend"""
 
-    def __init__(self, host, user, password, folder="INBOX"):
+    def __init__(self, host, user, password, folder="INBOX", port=993, security="SSL"):
         """Create a new IMAPMailbox object"""
         self.host = host
         self.user = user
         self.password = password
         self.__folder = folder
+        self.__security = security
+        self.__port = port
 
     def connect(self):
         """Connect to the IMAP server"""
-        self.__m = imaplib.IMAP4_SSL(self.host)
+        if self.__security == "SSL":
+            log.info("Connecting to IMAP server using SSL")
+            self.__m = imaplib.IMAP4_SSL(self.host, self.__port)
+        elif self.__security == "STARTTLS":
+            log.info("Connecting to IMAP server using STARTTLS")
+            self.__m = imaplib.IMAP4(self.host, self.__port)
+            self.__m.starttls()
+        else:
+            raise ValueError("Invalid security type")
         self.__m.login(self.user, self.password)
         self.select(self.__folder)
 
     def disconnect(self):
         """Disconnect from the IMAP server"""
+
+        log.info("Disconnecting from IMAP server")
         self.__m.close()
         self.__m.logout()
 
