@@ -166,6 +166,11 @@ class IMAPMailbox(mailbox.Mailbox):
 
         self.__m.copy(messageset, folder)
 
+    def move(self, messageset: bytes, folder: str) -> None:
+        """Move a message to a different folder"""
+
+        self.__m._simple_command("MOVE", messageset, folder)
+
     def discard(self, messageset: bytes) -> None:
         """Mark messages for deletion"""
 
