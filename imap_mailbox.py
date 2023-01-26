@@ -4,7 +4,9 @@
 import datetime
 import email.header
 import imaplib
+import logging
 import mailbox
+import os
 import re
 import time
 
@@ -12,6 +14,10 @@ __all__ = ["IMAPMailbox", "IMAPMessage", "IMAPMessageHeadersOnly"]
 
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
 FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"?([^\"]+)\"?$")
+
+
+log = logging.getLogger(__name__)
+log.setLevel(getattr(logging, os.getenv("LOG_LEVEL", "INFO")))
 
 
 def handle_response(response):
