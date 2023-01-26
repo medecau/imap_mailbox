@@ -29,19 +29,10 @@ def handle_response(response):
     return data
 
 
-def parse_folder_data(data):
-    """Parse the folder data on a folder list call"""
-
-    # use regex to parse the folder data
-    flags, delimiter, folder_name = FOLDER_DATA_RE.match(data.decode()).groups()
-
-    return flags, delimiter, folder_name
-
-
-def change_time(time, days=0, hours=0, minutes=0, seconds=0):
+def change_time(time, weeks=0, days=0, hours=0, minutes=0, seconds=0):
     """Change the time by a given amount of days, hours, minutes and seconds"""
     return time + datetime.timedelta(
-        days=days, hours=hours, minutes=minutes, seconds=seconds
+        weeks=weeks, days=days, hours=hours, minutes=minutes, seconds=seconds
     )
 
 
@@ -238,30 +229,38 @@ class IMAPMailbox(mailbox.Mailbox):
         q = q.replace("LASTMONTH", imap_date_range(last_month_start, month_start))
         q = q.replace("LASTYEAR", imap_date_range(last_year_start, year_start))
 
-        q = q.replace("PAST3DAYS", f"SINCE {imap_date(change_time(today, days=-3))}")
-        q = q.replace("PAST7DAYS", f"SINCE {imap_date(change_time(today, days=-7))}")
-        q = q.replace("PAST14DAYS", f"SINCE {imap_date(change_time(today, days=-14))}")
+        # shortcuts
+        q = q.replace("PASTDAY", "PAST1DAY")
+        q = q.replace("PASTWEEK", "PAST1WEEK")
+        q = q.replace("PASTMONTH", "PAST1MONTH")
+        q = q.replace("PASTYEAR", "PAST1YEAR")
 
-        q = q.replace("PAST30DAYS", f"SINCE {imap_date(change_time(today, days=-30))}")
-        q = q.replace("PAST60DAYS", f"SINCE {imap_date(change_time(today, days=-60))}")
-        q = q.replace("PAST90DAYS", f"SINCE {imap_date(change_time(today, days=-90))}")
-
-        # 180 days
-        q = q.replace("PASTHALFYEAR", "PAST180DAYS")
-        q = q.replace(
-            "PAST180DAYS", f"SINCE {imap_date(change_time(today, days=-180))}"
+        # use regex to match the PASTXDAYS macro
+        q = re.sub(
+            r"PAST(\d+)DAYS?",
+            lambda m: f"SINCE {imap_date(change_time(today, days=-int(m.group(1))))}",
+            q,
         )
 
-        # 365 days
-        q = q.replace("PASTYEAR", "PAST365DAYS")
-        q = q.replace(
-            "PAST365DAYS", f"SINCE {imap_date(change_time(today, days=-365))}"
+        # use regex to match the PASTXWEEKS macro
+        q = re.sub(
+            r"PAST(\d+)WEEKS?",
+            lambda m: f"SINCE {imap_date(change_time(today, weeks=-int(m.group(1))))}",
+            q,
         )
 
-        # 730 days - 2 years
-        q = q.replace("PAST2YEARS", "PAST730DAYS")
-        q = q.replace(
-            "PAST730DAYS", f"SINCE {imap_date(change_time(today, days=-730))}"
+        # use regex to match the PASTXMONTHS macro
+        q = re.sub(
+            r"PAST(\d+)MONTHS?",
+            lambda m: f"SINCE {imap_date(change_time(today, days=-int(m.group(1)) * 30))}",
+            q,
+        )
+
+        # use regex to match the PASTXYEARS macro
+        q = re.sub(
+            r"PAST(\d+)YEARS?",
+            lambda m: f"SINCE {imap_date(change_time(today, days=-int(m.group(1)) * 365))}",
+            q,
         )
 
         return q
@@ -300,21 +299,29 @@ class IMAPMailbox(mailbox.Mailbox):
         - LASTMONTH - messages from the month before
         - LASTYEAR - messages from the year before
 
-        Counting back from today:
-        - PAST7DAYS - messages from the past 7 days
-        - PAST14DAYS - messages from the past 14 days
-        - PAST30DAYS - messages from the past 30 days
-        - PAST60DAYS - messages from the past 60 days
-        - PAST90DAYS - messages from the past 90 days
-        - PAST180DAYS - messages from the past 180 days
-        - PAST365DAYS - messages from the past 365 days
-        - PASTYEAR - same as PAST365DAYS
-        - PAST730DAYS - messages from the past 730 days, or 2 years
-        - PAST2YEARS - same as PAST730DAYS
+        Periods starting from now:
+
+        _These are just shortcuts_
+        - PASTDAY - messages from the past 1 day, same as PAST1DAY
+        - PASTWEEK - messages from the past 1 week, same as PAST1WEEK
+        - PASTMONTH - messages from the past 30 days, same as PAST1MONTH
+        - PASTYEAR - messages from the past 365 days, same as PAST1YEAR
+
+        _These are pattern matching macros_
+        - PASTXDAYS - messages from the past X days
+        - PASTXWEEKS - messages from the past X weeks
+        - PASTXMONTHS - messages from the past X * 30 days
+        - PASTXYEARS - messages from the past X * 365 days
 
         These macros can be combined with other search macros, and can be
-        negated with NOT. For example, to get messages that are older than
-        7 days, use NOT PAST7DAYS.
+        negated with NOT. For example, to search and archive or delete messages with a short
+        relevance period, you can use `NOT PAST3DAYS`, use `NOT PAST3MONTHS` to search for
+        messages older than a quarter, or use `NOT PAST2YEAR` to search for messages older than
+        two years.
+
+        _The `NOT` modifier is very useful for mailbox maintenance_
+
+        _There are no options for hours, because the range seletion does not have time of day precision._
 
         Returns:
             bytes: A comma-separated list of message UIDs
@@ -322,6 +329,12 @@ class IMAPMailbox(mailbox.Mailbox):
 
         expanded_query = self.__expand_search_macros(query)
         data = handle_response(self.__m.search(None, expanded_query))
+        num_results = len(data[0].split(b" "))
+
+        log.info(f"Searching for messages matching: {query}")
+        if expanded_query != query:
+            log.info(f"Expanded search query to: {expanded_query}")
+        log.info(f"Found {num_results} results")
 
         return data[0].replace(b" ", b",")
 
@@ -334,7 +347,7 @@ class IMAPMailbox(mailbox.Mailbox):
 
         folders_data = handle_response(self.__m.list())
         for data in folders_data:
-            flags, delimiter, folder = parse_folder_data(data)
+            flags, delimiter, folder = FOLDER_DATA_RE.match(data.decode()).groups()
             display_name = folder.split(delimiter)[-1]
             yield (flags, delimiter, folder, display_name)
 
