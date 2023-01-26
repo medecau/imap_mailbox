@@ -1,8 +1,13 @@
 [tool.poetry]
 name = "imap_mailbox"
-version = "0.1.0"
+version = "0.2.0"
 description = "mailbox over IMAP"
 authors = ["Pedro Rodrigues <medecau@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://medecau.github.io/imap_mailbox/"
+repository = "https://github.com/medecau/imap_mailbox"
+documentation = "https://medecau.github.io/imap_mailbox/"
 
 [tool.poetry.dependencies]
 python = "^3.8"
