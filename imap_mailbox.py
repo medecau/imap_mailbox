@@ -11,7 +11,7 @@ import time
 __all__ = ["IMAPMailbox", "IMAPMessage", "IMAPMessageHeadersOnly"]
 
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
-FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"([^\"]+)\"$")
+FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"?([^\"]+)\"?$")
 
 
 def handle_response(response):
