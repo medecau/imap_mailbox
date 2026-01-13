@@ -1,17 +1,14 @@
-.PHONY: help
+.PHONY: help fmt publish clean
 help:	## Show this help.
 	grep '^[^#[:space:]\.].*:' Makefile
 
-.PHONY: lint
-lint:	## Run linters.
-	poetry run isort .
-	poetry run black .
+fmt:	## Auto fix and format code.
+	uv run ruff check --fix .
+	uv run ruff format .
 
-.Phony: check
-check:	## Run linters in check mode.
-	poetry run isort --check .
-	poetry run black --check .
+publish: clean	## Publish to PyPI.
+	uv build
+	uv publish
 
-.PHONY: publish
-publish: check	## Publish to PyPI.
-	poetry publish --build
+clean:
+	rm -fr dist

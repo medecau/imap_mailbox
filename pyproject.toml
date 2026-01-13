@@ -1,23 +1,34 @@
-[tool.poetry]
+[project]
 name = "imap_mailbox"
-version = "0.2.0"
+version = "0.3.0.dev1"
 description = "mailbox over IMAP"
-authors = ["Pedro Rodrigues <medecau@gmail.com>"]
-license = "MIT"
 readme = "README.md"
-homepage = "https://medecau.github.io/imap_mailbox/"
-repository = "https://github.com/medecau/imap_mailbox"
-documentation = "https://medecau.github.io/imap_mailbox/"
+license = "MIT"
+authors = [{ name = "Pedro Rodrigues", email = "medecau@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = []
 
-[tool.poetry.dependencies]
-python = "^3.8"
+[project.urls]
+Homepage = "https://medecau.github.io/imap_mailbox/"
+Repository = "https://github.com/medecau/imap_mailbox"
+Documentation = "https://medecau.github.io/imap_mailbox/"
 
-[tool.poetry.group.dev.dependencies]
-black = "^22.12.0"
-isort = "^5.11.4"
-pytest = "^7.2.0"
-pdoc = "^12.3.1"
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "pytest>=7.2.0",
+    "pdoc>=12.3.1",
+]
+
+[tool.ruff.lint]
+extend-select = ["I", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]  # Allow assert in tests
+
+[tool.uv.build-backend]
+module-root = ""
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.6,<0.7"]
+build-backend = "uv_build"
