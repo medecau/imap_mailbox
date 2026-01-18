@@ -5,7 +5,7 @@ description = "mailbox over IMAP"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Pedro Rodrigues", email = "medecau@gmail.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = []
 
 [project.urls]
@@ -18,13 +18,14 @@ dev = [
     "ruff>=0.8.0",
     "pytest>=7.2.0",
     "pdoc>=12.3.1",
+    "pymap>=0.36.0",
 ]
 
 [tool.ruff.lint]
 extend-select = ["I", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101"]  # Allow assert in tests
+"tests/**/*.py" = ["S101", "S603", "S607"]  # Allow assert and subprocess in tests
 
 [tool.uv.build-backend]
 module-root = ""

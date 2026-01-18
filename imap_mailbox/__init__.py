@@ -3,6 +3,7 @@
 """
 
 import datetime
+import email
 import email.header
 import imaplib
 import logging
@@ -11,7 +12,7 @@ import os
 import re
 import time
 
-__all__ = ["IMAPMailbox", "IMAPMessage", "IMAPMessageHeadersOnly"]
+__all__ = ["IMAPMailbox", "IMAPMessage"]
 
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
 FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"?([^\"]+)\"?$")
@@ -48,15 +49,76 @@ def imap_date_range(start, end):
 
 
 class IMAPMessage(mailbox.Message):
-    """A Mailbox Message class that uses an IMAPClient object to fetch the message"""
+    """A Mailbox Message class that uses an IMAPClient object to fetch the message
+
+    Supports lazy loading: messages can be created with headers only, and the full
+    body is fetched transparently when accessed.
+    """
+
+    def __init__(self, message=None, uid=None, mailbox_ref=None):
+        """Create a new IMAPMessage
+
+        Args:
+            message: Email message bytes or Message object
+            uid: Message UID for lazy loading (optional)
+            mailbox_ref: Reference to IMAPMailbox for lazy loading (optional)
+        """
+        super().__init__(message)
+        self._uid = uid
+        self._mailbox_ref = mailbox_ref
+        self._body_loaded = mailbox_ref is None  # If no mailbox ref, body is already loaded
 
     @classmethod
-    def from_uid(cls, uid, mailbox):
-        """Create a new message from a UID"""
+    def from_uid(cls, uid, mailbox, headers_only=False):
+        """Create a new message from a UID
 
-        # fetch the message from the mailbox
-        uid, body = next(mailbox.fetch(uid, "RFC822"))
-        return cls(body)
+        Args:
+            uid: Message UID
+            mailbox: IMAPMailbox instance
+            headers_only: If True, fetch only headers for lazy loading
+        """
+        if headers_only:
+            # Fetch headers only, store reference for lazy body loading
+            _, body = next(mailbox.fetch(uid, "RFC822.HEADER"))
+            msg = cls(body, uid=uid, mailbox_ref=mailbox)
+            return msg
+        else:
+            # Fetch full message immediately
+            _, body = next(mailbox.fetch(uid, "RFC822"))
+            return cls(body, uid=uid)
+
+    @property
+    def uid(self):
+        """Get the message UID"""
+        return self._uid
+
+    def _ensure_body_loaded(self):
+        """Ensure the full message body is loaded
+
+        If the message was created with headers_only=True, this will fetch
+        the full message from the IMAP server.
+
+        Raises:
+            RuntimeError: If the IMAP connection is closed
+        """
+        if self._body_loaded:
+            return
+
+        if self._mailbox_ref is None:
+            raise RuntimeError("Cannot load body: IMAP connection is closed")
+
+        # Fetch the full message
+        _, body = next(self._mailbox_ref.fetch(self._uid, "RFC822"))
+
+        # Parse the full message
+        full_msg = email.message_from_bytes(body)
+
+        # Update our payload from the parsed message
+        self._payload = full_msg._payload
+
+        # Clear the mailbox reference to allow garbage collection
+        self._mailbox_ref = None
+        self._body_loaded = True
 
     def __getitem__(self, name: str):
         """Get a message header
@@ -65,7 +127,6 @@ class IMAPMessage(mailbox.Message):
         The header is decoded using the email.header.decode_header method. This allows
         for the retrieval of headers that contain non-ASCII characters.
         """
-
         original_header = super().__getitem__(name)
 
         if original_header is None:
@@ -83,21 +144,44 @@ class IMAPMessage(mailbox.Message):
             else:
                 decoded_chunks.append(data.decode(charset, "replace"))
 
-        # decode_chunks = (pair[0] for pair in decoded_pairs)
-
         return " ".join(decoded_chunks)
 
+    # Override body-accessing methods to ensure body is loaded
 
-class IMAPMessageHeadersOnly(IMAPMessage):
-    """A Mailbox Message class that uses an IMAPClient object to fetch the message"""
+    def get_payload(self, *args, **kwargs):
+        """Get the message payload, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().get_payload(*args, **kwargs)
 
-    @classmethod
-    def from_uid(cls, uid, mailbox):
-        """Create a new message from a UID"""
+    def is_multipart(self):
+        """Check if message is multipart, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().is_multipart()
 
-        # fetch headers only message from the mailbox
-        uid, body = next(mailbox.fetch(uid, "RFC822.HEADER"))
-        return cls(body)
+    def walk(self):
+        """Walk the message tree, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().walk()
+
+    def as_string(self, *args, **kwargs):
+        """Return message as string, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().as_string(*args, **kwargs)
+
+    def as_bytes(self, *args, **kwargs):
+        """Return message as bytes, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().as_bytes(*args, **kwargs)
+
+    def set_payload(self, *args, **kwargs):
+        """Set the message payload, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().set_payload(*args, **kwargs)
+
+    def attach(self, *args, **kwargs):
+        """Attach a payload, ensuring body is loaded"""
+        self._ensure_body_loaded()
+        return super().attach(*args, **kwargs)
 
 
 class IMAPMailbox(mailbox.Mailbox):
@@ -121,6 +205,9 @@ class IMAPMailbox(mailbox.Mailbox):
             log.info("Connecting to IMAP server using STARTTLS")
             self.__m = imaplib.IMAP4(self.host, self.__port)
             self.__m.starttls()
+        elif self.__security == "PLAIN":
+            log.info("Connecting to IMAP server without encryption (insecure)")
+            self.__m = imaplib.IMAP4(self.host, self.__port)
         else:
             raise ValueError("Invalid security type")
         self.__m.login(self.user, self.password)
@@ -144,7 +231,7 @@ class IMAPMailbox(mailbox.Mailbox):
         """Iterate over all messages in the mailbox"""
         data = handle_response(self.__m.search(None, "ALL"))
         for uid in data[0].decode().split():
-            yield IMAPMessageHeadersOnly.from_uid(uid, self)
+            yield IMAPMessage.from_uid(uid, self, headers_only=True)
 
     def values(self):
         yield from iter(self)
@@ -155,9 +242,11 @@ class IMAPMailbox(mailbox.Mailbox):
         return data[0].decode().split()
 
     def items(self):
-        """Iterate over all messages in the mailbox"""
-        uids = ",".join(self.keys()).encode()
-        return self.fetch(uids, "RFC822")
+        """Iterate over all messages as (uid, message) tuples"""
+        data = handle_response(self.__m.search(None, "ALL"))
+        for uid in data[0].decode().split():
+            msg = IMAPMessage.from_uid(uid, self, headers_only=True)
+            yield uid, msg
 
     @property
     def capability(self):
