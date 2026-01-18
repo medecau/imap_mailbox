@@ -12,7 +12,7 @@ import os
 import re
 import time
 
-__all__ = ["IMAPMailbox", "IMAPMessage"]
+__all__ = ["IMAPMailbox", "IMAPMessage", "IMAPError"]
 
 MESSAGE_HEAD_RE = re.compile(r"(\d+) \(([^\s]+) {(\d+)}$")
 FOLDER_DATA_RE = re.compile(r"\(([^)]+)\) \"([^\"]+)\" \"?([^\"]+)\"?$")
@@ -22,11 +22,17 @@ log = logging.getLogger(__name__)
 log.setLevel(getattr(logging, os.getenv("LOG_LEVEL", "INFO")))
 
 
+class IMAPError(Exception):
+    """Exception raised for IMAP operation errors."""
+
+    pass
+
+
 def handle_response(response):
     """Handle the response from the IMAP server"""
     status, data = response
     if status != "OK":
-        raise Exception(data[0])
+        raise IMAPError(data[0])
 
     return data
 
@@ -82,8 +88,7 @@ class IMAPMessage(mailbox.Message):
         if headers_only:
             # Fetch headers only, store reference for lazy body loading
             _, body = next(mailbox.fetch(uid, "RFC822.HEADER"))
-            msg = cls(body, uid=uid, mailbox_ref=mailbox)
-            return msg
+            return cls(body, uid=uid, mailbox_ref=mailbox)
         else:
             # Fetch full message immediately
             _, body = next(mailbox.fetch(uid, "RFC822"))
@@ -246,8 +251,7 @@ class IMAPMailbox(mailbox.Mailbox):
     def iterkeys(self):
         """Return an iterator over keys."""
         data = handle_response(self.__m.search(None, "ALL"))
-        for uid in data[0].decode().split():
-            yield uid
+        yield from data[0].decode().split()
 
     def __contains__(self, key):
         """Return True if the keyed message exists, False otherwise."""
@@ -353,7 +357,7 @@ class IMAPMailbox(mailbox.Mailbox):
         for head, body in messages:
             uid, what, size = MESSAGE_HEAD_RE.match(head.decode()).groups()
             if size != str(len(body)):
-                raise Exception("Size mismatch")
+                raise IMAPError("Size mismatch")
 
             yield uid, body
 

@@ -26,7 +26,7 @@ def wait_for_port(host, port, timeout=10):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((host, port))
                 return True
-        except (ConnectionRefusedError, OSError):
+        except OSError:
             time.sleep(0.1)
     return False
 

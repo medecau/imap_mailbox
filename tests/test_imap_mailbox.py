@@ -36,11 +36,10 @@ class TestIMAPMailboxIteration:
         with imap_connection as mb:
             messages = list(mb)
             # Demo data should have some messages
-            assert len(messages) > 0
+            assert messages
             # All should be IMAPMessage instances
-            for msg in messages:
-                assert isinstance(msg, IMAPMessage)
-                assert msg.uid is not None
+            assert all(isinstance(msg, IMAPMessage) for msg in messages)
+            assert all(msg.uid is not None for msg in messages)
 
     def test_keys_returns_uids(self, imap_connection):
         """Test that keys() returns UID strings."""
@@ -49,10 +48,9 @@ class TestIMAPMailboxIteration:
             assert isinstance(keys, list)
             assert len(keys) > 0
             # All should be strings
-            for key in keys:
-                assert isinstance(key, str)
-                # UIDs should be numeric strings
-                assert key.isdigit()
+            assert all(isinstance(key, str) for key in keys)
+            # UIDs should be numeric strings
+            assert all(key.isdigit() for key in keys)
 
     def test_len_returns_message_count(self, imap_connection):
         """Test that __len__ returns the correct message count."""
@@ -66,11 +64,10 @@ class TestIMAPMailboxIteration:
         """Test that items() returns (uid, IMAPMessage) tuples."""
         with imap_connection as mb:
             items = list(mb.items())
-            assert len(items) > 0
-            for uid, msg in items:
-                assert isinstance(uid, str)
-                assert isinstance(msg, IMAPMessage)
-                assert msg.uid == uid
+            assert items
+            assert all(isinstance(uid, str) for uid, msg in items)
+            assert all(isinstance(msg, IMAPMessage) for uid, msg in items)
+            assert all(msg.uid == uid for uid, msg in items)
 
 
 class TestIMAPMessageLazyLoading:
@@ -104,7 +101,7 @@ class TestIMAPMessageLazyLoading:
             # Walking the message should trigger body load
             parts = list(msg.walk())
             assert msg._body_loaded
-            assert len(parts) > 0
+            assert parts
 
     def test_message_as_string_triggers_body_load(self, imap_connection):
         """Test that as_string() triggers body loading."""
@@ -124,15 +121,13 @@ class TestIMAPMailboxFolders:
         """Test listing folders."""
         with imap_connection as mb:
             folders = list(mb.list_folders())
-            assert len(folders) > 0
+            assert folders
             # Each folder should be a tuple: (flags, delimiter, folder, display_name)
-            for folder in folders:
-                assert len(folder) == 4
-                flags, delimiter, folder_name, display_name = folder
-                assert isinstance(flags, str)
-                assert isinstance(delimiter, str)
-                assert isinstance(folder_name, str)
-                assert isinstance(display_name, str)
+            assert all(len(folder) == 4 for folder in folders)
+            assert all(isinstance(folder[0], str) for folder in folders)  # flags
+            assert all(isinstance(folder[1], str) for folder in folders)  # delimiter
+            assert all(isinstance(folder[2], str) for folder in folders)  # folder_name
+            assert all(isinstance(folder[3], str) for folder in folders)  # display_name
 
     def test_select_folder(self, imap_connection):
         """Test selecting a different folder."""
@@ -142,14 +137,13 @@ class TestIMAPMailboxFolders:
             folder_names = [f[2] for f in folders]
 
             # Select the first non-INBOX folder if available
-            for folder_name in folder_names:
-                if folder_name != "INBOX":
-                    mb.select(folder_name)
-                    assert mb.current_folder == folder_name
-                    # Should be able to get keys from the new folder
-                    keys = mb.keys()
-                    assert isinstance(keys, list)
-                    break
+            non_inbox = next((f for f in folder_names if f != "INBOX"), None)
+            assert non_inbox is not None, "No non-INBOX folder available for testing"
+            mb.select(non_inbox)
+            assert mb.current_folder == non_inbox
+            # Should be able to get keys from the new folder
+            keys = mb.keys()
+            assert isinstance(keys, list)
 
 
 class TestMailboxInterface:
@@ -361,12 +355,11 @@ class TestMailboxInterface:
     def test_itervalues(self, imap_connection):
         """Test that itervalues() returns IMAPMessage instances."""
         with imap_connection as mb:
-            for msg in mb.itervalues():
-                assert isinstance(msg, IMAPMessage)
+            assert all(isinstance(msg, IMAPMessage) for msg in mb.itervalues())
 
     def test_iteritems(self, imap_connection):
         """Test that iteritems() returns (key, IMAPMessage) tuples."""
         with imap_connection as mb:
-            for key, msg in mb.iteritems():
-                assert isinstance(key, str)
-                assert isinstance(msg, IMAPMessage)
+            assert all(isinstance(key, str) for key, msg in mb.iteritems())
+            # Need to consume iteritems again since it's an iterator
+            assert all(isinstance(msg, IMAPMessage) for key, msg in mb.iteritems())
