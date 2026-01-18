@@ -5,7 +5,7 @@ echo "Running pre-commit checks..."
 "$(dirname "$0")/pre-commit"
 
 echo "Running tests with coverage..."
-uv run pytest tests/ --cov=pydub --cov-report=xml --cov-report=term
+uv run pytest tests/ --cov=imap_mailbox --cov-report=xml --cov-report=term
 
 echo "Checking diff coverage..."
 if ! uv run diff-cover coverage.xml; then
