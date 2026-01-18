@@ -241,6 +241,46 @@ class IMAPMailbox(mailbox.Mailbox):
         data = handle_response(self.__m.search(None, "ALL"))
         return data[0].decode().split()
 
+    def iterkeys(self):
+        """Return an iterator over keys."""
+        data = handle_response(self.__m.search(None, "ALL"))
+        for uid in data[0].decode().split():
+            yield uid
+
+    def __contains__(self, key):
+        """Return True if the keyed message exists, False otherwise."""
+        return str(key) in self.keys()
+
+    def get_bytes(self, key):
+        """Return a byte string representation or raise KeyError."""
+        if key not in self:
+            raise KeyError(key)
+        _, body = next(self.fetch(key, "RFC822"))
+        return body
+
+    def get_file(self, key):
+        """Return a file-like representation or raise KeyError."""
+        import io
+
+        return io.BytesIO(self.get_bytes(key))
+
+    def get_message(self, key):
+        """Return a Message representation or raise KeyError."""
+        if key not in self:
+            raise KeyError(key)
+        return IMAPMessage.from_uid(key, self, headers_only=False)
+
+    def __getitem__(self, key):
+        """Return the keyed message; raise KeyError if it doesn't exist."""
+        return self.get_message(key)
+
+    def __setitem__(self, key, message):
+        """Replace the keyed message; raise KeyError if it doesn't exist."""
+        if key not in self:
+            raise KeyError(key)
+        self.remove(key)
+        self.add(message)
+
     def items(self):
         """Iterate over all messages as (uid, message) tuples"""
         data = handle_response(self.__m.search(None, "ALL"))
@@ -273,19 +313,29 @@ class IMAPMailbox(mailbox.Mailbox):
 
         self.__m._simple_command("MOVE", messageset, folder)
 
-    def discard(self, messageset: bytes) -> None:
-        """Mark messages for deletion"""
-
-        self.__m.store(messageset, "+FLAGS", "\\Deleted")
-
-    def remove(self, messageset: bytes) -> None:
-        """Remove messages from the mailbox"""
-
-        self.discard(messageset)
+    def remove(self, key):
+        """Remove the keyed message; raise KeyError if it doesn't exist."""
+        if key not in self:
+            raise KeyError(key)
+        self.__m.store(key, "+FLAGS", "\\Deleted")
         self.__m.expunge()
 
-    def __delitem__(self, key: str) -> None:
-        raise NotImplementedError("Use discard() instead")
+    def discard(self, key):
+        """If the keyed message exists, remove it."""
+        try:
+            self.remove(key)
+        except KeyError:
+            pass
+
+    def __delitem__(self, key):
+        """Remove the keyed message; raise KeyError if it doesn't exist."""
+        self.remove(key)
+
+    def clear(self):
+        """Remove all messages from the mailbox."""
+        for key in self.keys():
+            self.__m.store(key, "+FLAGS", "\\Deleted")
+        self.__m.expunge()
 
     def __len__(self) -> int:
         return len(self.keys())
@@ -293,7 +343,10 @@ class IMAPMailbox(mailbox.Mailbox):
     def fetch(self, messageset: bytes, what):
         """Fetch messages from the mailbox"""
 
-        messages = handle_response(self.__m.fetch(messageset, what))[::2]
+        response = handle_response(self.__m.fetch(messageset, what))
+
+        # Filter response to only include message data (tuples), not FLAGS (bytes)
+        messages = [item for item in response if isinstance(item, tuple)]
 
         for head, body in messages:
             uid, what, size = MESSAGE_HEAD_RE.match(head.decode()).groups()
@@ -468,3 +521,20 @@ class IMAPMailbox(mailbox.Mailbox):
         self.__folder = folder
         self.__m.select(folder)
         return self
+
+    def flush(self):
+        """Write any pending changes to the disk."""
+        pass  # IMAP changes are immediate
+
+    def lock(self):
+        """Lock the mailbox."""
+        pass  # IMAP handles locking server-side
+
+    def unlock(self):
+        """Unlock the mailbox if it is locked."""
+        pass  # IMAP handles locking server-side
+
+    def close(self):
+        """Flush and close the mailbox."""
+        self.flush()
+        self.disconnect()

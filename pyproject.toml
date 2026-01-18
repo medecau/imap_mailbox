@@ -1,6 +1,6 @@
 [project]
 name = "imap_mailbox"
-version = "0.3.0.dev1"
+version = "0.3.0.dev2"
 description = "mailbox over IMAP"
 readme = "README.md"
 license = "MIT"

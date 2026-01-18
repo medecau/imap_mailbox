@@ -94,3 +94,16 @@ def imap_connection(pymap_server):
         password=pymap_server["password"],
         security="PLAIN",
     )
+
+
+@pytest.fixture
+def sample_message():
+    """Provide a sample email message for testing."""
+    import email.message
+
+    msg = email.message.EmailMessage()
+    msg["Subject"] = "Test Message"
+    msg["From"] = "test@example.com"
+    msg["To"] = "recipient@example.com"
+    msg.set_content("This is a test message body.")
+    return msg
