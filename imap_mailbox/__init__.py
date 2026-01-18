@@ -66,7 +66,9 @@ class IMAPMessage(mailbox.Message):
         super().__init__(message)
         self._uid = uid
         self._mailbox_ref = mailbox_ref
-        self._body_loaded = mailbox_ref is None  # If no mailbox ref, body is already loaded
+        self._body_loaded = (
+            mailbox_ref is None
+        )  # If no mailbox ref, body is already loaded
 
     @classmethod
     def from_uid(cls, uid, mailbox, headers_only=False):

@@ -23,12 +23,6 @@ Install the latest stable version from PyPI:
 pip install imap-mailbox
 ```
 
-Install the latest version from GitHub:
-
-```bash
-pip install https://github.com/medecau/imap_mailbox/archive/refs/heads/main.zip
-```
-
 # Examples
 
 ## Iterate over messages in a folder
@@ -60,13 +54,12 @@ with imap_mailbox.IMAPMailbox(
     ) as mailbox:
     
     # search messages from your friend
-    uids = mailbox.search('FROM', 'handler@proton.me')
+    uids = mailbox.search('FROM', 'tr3nton@proton.me')
 
     # erase the evidence
     mailbox.delete(uids)
     
 ```
-_this is a joke; don't use proton for crimes – stay safe_
 
 ## Delete messages from a noisy sender
 
@@ -94,6 +87,14 @@ with imap_mailbox.IMAPMailbox('imap.example.com', 'username', 'password') as mai
     
     # delete the messages
     mailbox.delete(uids)
+```
+
+# Development
+
+Set up the development environment with dependencies and git hooks:
+
+```bash
+./scripts/init-dev.sh
 ```
 
 # Contribution
